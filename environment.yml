@@ -24,4 +24,6 @@ dependencies:
   - ipython
   - ipykernel
   - requests
-  
+  - openpyxl
+  - pypsa[excel]
+  - xarray[excel]
