@@ -15,7 +15,7 @@ dependencies:
   - pandas
   - plotly
   - pyomo
-  - pypsa
+  - pypsa=1.0.3
   - scipy
   - seaborn
   - xarray
@@ -30,3 +30,4 @@ dependencies:
   - python-calamine
   - xlrd
   - pyxlsb
+
