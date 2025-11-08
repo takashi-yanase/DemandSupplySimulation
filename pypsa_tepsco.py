@@ -8,11 +8,10 @@ import requests
 import re
 import shutil
 
-def import_demand_data(network, demand_file_name, demand_change_compared_to_2024):
-    # Import and filter demand data to match network snapshots
-
-    demand_data_raw = pd.read_csv(demand_file_name, index_col=0, parse_dates=True)
-    print(demand_data_raw)
+# 需要データの読み込み
+def import_demand_data_from_network_file(network, network_file_name, demand_change_compared_to_2024):
+    demand_data_raw = pd.read_excel(network_file_name, sheet_name='Demand', index_col=0, parse_dates=True)
+        
     # demand_data_rawに格納されたデータをnetwork.loads_t.p_setに適用
     for load in network.loads.index:
         if load in demand_data_raw.columns:
