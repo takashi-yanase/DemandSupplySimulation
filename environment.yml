@@ -27,3 +27,6 @@ dependencies:
   - openpyxl
   - pypsa[excel]
   - xarray[excel]
+  - python-calamine
+  - xlrd
+  - pyxlsb
