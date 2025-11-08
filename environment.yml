@@ -15,9 +15,7 @@ dependencies:
   - pandas
   - plotly
   - pyomo
-  - pypsa=1.0.3
   - scipy
-  - seaborn
   - xarray
   - xlsxwriter
   - ipywidgets
@@ -30,4 +28,9 @@ dependencies:
   - python-calamine
   - xlrd
   - pyxlsb
+  - pip:
+      - pypsa==1.0.3   # ← pip経由で最新版を取得
+      - geovoronoi
+      - seaborn
+
 
