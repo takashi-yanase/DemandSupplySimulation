@@ -1,0 +1,27 @@
+name: pypsa_tepsco
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - folium
+  - geopandas
+  - highspy
+  - linopy
+  - nbformat
+  - netCDF4
+  - numpy
+  - openpyxl
+  - pandas
+  - plotly
+  - pyomo
+  - pypsa
+  - scipy
+  - seaborn
+  - xarray
+  - xlsxwriter
+  - ipywidgets
+  - ipython
+  - ipykernel
+  - requests
+  
