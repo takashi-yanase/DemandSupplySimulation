@@ -1,0 +1,1 @@
+Marginal CostとCapital CostがExcelの参照関数になっているため正しく読み込めていない。
