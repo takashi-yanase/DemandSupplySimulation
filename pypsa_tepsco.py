@@ -86,15 +86,17 @@ def import_solar_data_from_renewable_ninja(network, renewable_ninja_api_key, sta
             try:
                 gen_name, electricity_data = future.result()
                 if electricity_data is not None and len(electricity_data) > 0:
-                    # networkのsnapshotsに合わせてデータを調整
-                    if len(electricity_data) > len(network.snapshots):
-                        electricity_data = electricity_data[:len(network.snapshots)]
-                    elif len(electricity_data) < len(network.snapshots):
-                        warnings.warn(f"Data length mismatch for '{gen_name}': got {len(electricity_data)}, expected {len(network.snapshots)}")
+                    # electricity_dataのインデックスとnetwork.snapshotsを照合
+                    # 共通の時刻のみを抽出
+                    common_timestamps = electricity_data.index.intersection(network.snapshots)
                     
-                    network.generators_t.p_max_pu[gen_name] = electricity_data.values
-                    print(f"✓ Successfully stored solar data for '{gen_name}' ({len(electricity_data)} points)")
-                    success_count += 1
+                    if len(common_timestamps) == 0:
+                        warnings.warn(f"No matching timestamps for '{gen_name}'. Data index: {electricity_data.index[:5]}, Network snapshots: {network.snapshots[:5]}")
+                    else:
+                        # 共通の時刻のデータのみを格納
+                        network.generators_t.p_max_pu.loc[common_timestamps, gen_name] = electricity_data.loc[common_timestamps].values
+                        print(f"✓ Successfully stored solar data for '{gen_name}' ({len(common_timestamps)} points)")
+                        success_count += 1
                 else:
                     print(f"✗ No data received for '{gen_name}'")
             except Exception as e:
