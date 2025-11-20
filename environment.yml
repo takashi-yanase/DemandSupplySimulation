@@ -28,6 +28,7 @@ dependencies:
   - python-calamine
   - xlrd
   - pyxlsb
+  - beautifulsoup4
   - pip:
       - pypsa==1.0.3   # ← pip経由で最新版を取得
       - geovoronoi
