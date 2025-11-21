@@ -63,103 +63,138 @@ def plot_total_generation_by_carrier(network):
     plt.tight_layout()
     plt.show()
 
+def GetSolarTimeSeriesData(file_name, output_file, Year_of_analysis):
+    # pypsa-japan-10BusModel.xlsx のbusesのバス名と座標を取得して、年間の時系列データを取得してCSVに保存
 
+    import pandas as pd
+    import requests
+    renewable_ninja_api_key = '0ee68c7853037dcd2235f771d349d104e68996cf'
 
-# 太陽光発電所の出力データをRenewable.Ninjaから取得してnetworkに適用
-# networkのgeneratorsテーブルから太陽光発電所の座標を自動抽出
-def import_solar_data_from_renewable_ninja(network, renewable_ninja_api_key, start_year, end_year):
-    # 太陽光発電所のみを抽出
-    solar_generators = network.generators[network.generators['carrier'] == '太陽光']
-    
-    print(f"Found {len(solar_generators)} solar generators in network")
-    
-    if solar_generators.empty:
-        print("Warning: No solar generators found in network.")
-        return
-    
-    # 座標データを確認
-    if 'y' not in solar_generators.columns or 'x' not in solar_generators.columns:
-        raise ValueError("Generators table must have 'y' (latitude) and 'x' (longitude) columns.")
+    # ネットワークファイルからバス情報を読み込み
+    buses_df = pd.read_excel(file_name, sheet_name='buses')
+    buses_df = buses_df.set_index('name')
 
-    def fetch_solar_data(gen_name):
-        gen = network.generators.loc[gen_name]
-        lat, lon = gen['y'], gen['x']
-        # Renewable.ninja APIは1MWの容量係数を返すので、容量は1に固定
-        # 後で実際のp_nomを掛け算する必要はなく、容量係数のみを使用
-        capacity = 1  # 1MW固定で容量係数を取得
+    # 座標情報を含むバス位置データフレームを作成
+    bus_coords = buses_df[['y', 'x']].copy()
+    bus_coords.columns = ['lat', 'lon']
+    bus_coords = bus_coords.dropna()
+
+    print(f"取得したバス数: {len(bus_coords)}")
+    print(bus_coords)
+
+    # 年間の日付範囲を作成（JSTで最終的に必要な範囲）
+    annual_snapshots = pd.date_range(f"{Year_of_analysis}-01-01 00:00",
+                                    f"{Year_of_analysis}-12-31 23:00",
+                                    freq="h")
+
+    # 結果を格納するDataFrame
+    solar_data_annual_full = pd.DataFrame(index=annual_snapshots)
+
+    # 各バスの座標に対してRenewable.Ninja APIからデータを取得
+    for bus_name, row in bus_coords.iterrows():
+        lat = row['lat']
+        lon = row['lon']
         
-        print(f"Fetching data for '{gen_name}' at ({lat}, {lon}), p_nom={gen['p_nom']} MW")
+        print(f"Fetching data for {bus_name} (lat: {lat}, lon: {lon})...")
         
-        # Renewable.ninja APIの正しいパラメータ
-        # tracking=0: 固定式, azim=180: 南向き, tilt=35: 傾斜角35度（緯度と同じ程度）, system_loss=0.1: システム損失10%
-        url = f"https://www.renewables.ninja/api/data/pv?lat={lat}&lon={lon}&capacity={capacity}&tracking=0&azim=180&tilt=35&system_loss=0.1&date_from={start_year}-01-01&date_to={end_year}-12-31&format=json"
-        
-        # APIキーはヘッダーで渡す
+        # Renewable.Ninja API リクエスト
+        # JSTへの変換で9時間進むため、前日の15:00 UTCから取得開始
+        # （前日の15:00 UTC = 当日の0:00 JST）
+        url = 'https://www.renewables.ninja/api/data/pv'
+        params = {
+            'lat': lat,
+            'lon': lon,
+            'date_from': f'{Year_of_analysis - 1}-12-31',  # 前年の12/31から取得
+            'date_to': f'{Year_of_analysis}-12-31',
+            'dataset': 'merra2',
+            'capacity': 1.0,
+            'system_loss': 0.1,
+            'tracking': 0,
+            'tilt': 35,
+            'azim': 180,
+            'format': 'json'
+        }
         headers = {'Authorization': f'Token {renewable_ninja_api_key}'}
-        response = requests.get(url, headers=headers)
+        
+        response = requests.get(url, params=params, headers=headers)
         
         if response.status_code == 200:
             data = response.json()
-            # dataは辞書形式: キー=Unixタイムスタンプ(ミリ秒), 値={'electricity': value}
-            # DataFrameに変換
-            timestamps = []
-            electricity_values = []
-            for timestamp_ms, values in data['data'].items():
-                # Unixタイムスタンプ(ミリ秒)をDatetimeに変換
-                timestamps.append(pd.to_datetime(int(timestamp_ms), unit='ms', utc=True))
-                # electricity値を取得（これが容量係数）
-                electricity_values.append(values['electricity'])
-            
-            df = pd.DataFrame({'electricity': electricity_values}, index=timestamps)
-            # タイムスタンプをUTC+9時間シフトして日本時間に調整
-            # APIはUTC時刻を返すので、日本時間にするには9時間追加
-            df.index = df.index + pd.Timedelta(hours=9)
-            df.index = df.index.tz_localize(None)  # タイムゾーン情報を削除（naive datetimeに）
-            
-            print(f"  -> Received {len(df)} data points for '{gen_name}' (shifted to JST +9h)")
-            return gen_name, df['electricity']
-        else:
-            error_msg = f"API request failed with status code {response.status_code}"
-            if response.status_code == 403:
-                error_msg += " (Check API key)"
-            elif response.status_code == 400:
-                error_msg += f" (Bad request - check parameters)"
-            print(f"  -> Error: {error_msg}")
-            warnings.warn(f"Failed to fetch data for generator '{gen_name}' at location ({lat}, {lon}): {error_msg}")
-            return gen_name, None
-
-    success_count = 0
-    # 並列処理を削除し、順次処理に変更してレート制限を回避
-    # リクエスト間に1秒の遅延を入れる
-    results = []
-    for gen_name in solar_generators.index:
-        try:
-            gen_name, electricity_data = fetch_solar_data(gen_name)
-            results.append((gen_name, electricity_data))
-            # レート制限を回避するため、次のリクエストまで待機
-            time.sleep(1)
-        except Exception as e:
-            print(f"  -> Exception occurred for '{gen_name}': {e}")
-            results.append((gen_name, None))
-    
-    for gen_name, electricity_data in results:
-        try:
-            if electricity_data is not None and len(electricity_data) > 0:
-                # electricity_dataのインデックスとnetwork.snapshotsを照合
-                # 共通の時刻のみを抽出
-                common_timestamps = electricity_data.index.intersection(network.snapshots)
-                
-                if len(common_timestamps) == 0:
-                    warnings.warn(f"No matching timestamps for '{gen_name}'. Data index: {electricity_data.index[:5]}, Network snapshots: {network.snapshots[:5]}")
-                else:
-                    # 共通の時刻のデータのみを格納
-                    network.generators_t.p_max_pu.loc[common_timestamps, gen_name] = electricity_data.loc[common_timestamps].values
-                    print(f"✓ Successfully stored solar data for '{gen_name}' ({len(common_timestamps)} points)")
-                    success_count += 1
+            # レスポンス構造を確認してデバッグ
+            if isinstance(data, dict) and 'data' in data:
+                # 辞書形式のレスポンス (時刻がキーの場合)
+                if isinstance(data['data'], dict):
+                    # Unix時間(ミリ秒)をdatetimeに変換
+                    time_keys = list(data['data'].keys())
+                    # キーが数値(Unix時間)かどうか確認
+                    if time_keys and str(time_keys[0]).isdigit():
+                        # Unix時間(ミリ秒)の場合
+                        time_index = pd.to_datetime([int(k) for k in time_keys], unit='ms')
+                    else:
+                        # 文字列形式の場合
+                        time_index = pd.to_datetime(time_keys)
+                    # JSTに変換（UTC+9時間）
+                    time_index = time_index.tz_localize('UTC').tz_convert('Asia/Tokyo').tz_localize(None)
+                    values = list(data['data'].values())
+                    # 辞書から数値を抽出 (PyPSA形式)
+                    if values and isinstance(values[0], dict):
+                        values = [v.get('electricity', v) if isinstance(v, dict) else v for v in values]
+                    # 時刻インデックスと値を組み合わせて、annual_snapshotsの範囲にリインデックス
+                    temp_series = pd.Series(values, index=time_index)
+                    solar_data_annual_full[bus_name] = temp_series.reindex(annual_snapshots, fill_value=0)
+                # リスト形式のレスポンス (DataFrame変換可能な場合)
+                elif isinstance(data['data'], list):
+                    df_temp = pd.DataFrame(data['data'])
+                    # 時刻カラム名を探す
+                    time_col = next((col for col in df_temp.columns if 'time' in col.lower()), None)
+                    if time_col:
+                        df_temp.index = pd.to_datetime(df_temp[time_col])
+                    # 発電量カラム名を探す
+                    elec_col = next((col for col in df_temp.columns if 'electric' in col.lower() or 'power' in col.lower()), df_temp.columns[1] if len(df_temp.columns) > 1 else df_temp.columns[0])
+                    solar_data_annual_full[bus_name] = df_temp[elec_col]
             else:
-                print(f"✗ No data received for '{gen_name}'")
-        except Exception as e:
-            print(f"✗ Error processing generator '{gen_name}': {e}")
-            warnings.warn(f"Error processing generator '{gen_name}': {e}")
+                print(f"  ⚠ Unexpected response format for {bus_name}")
+                solar_data_annual_full[bus_name] = 0
+            print(f"  ✓ Success for {bus_name}")
+        else:
+            print(f"  ✗ Failed for {bus_name}: {response.status_code}")
+            solar_data_annual_full[bus_name] = 0
+
+    # PyPSA形式のCSVとして保存（数値のみ、UTF-8エンコーディング）
+
+    solar_data_annual_full.to_csv(output_file, encoding='utf-8-sig')
+    print(f"\n年間太陽光データ(PyPSA形式)を保存しました: {output_file}")
+    print(f"データサイズ: {solar_data_annual_full.shape}")
+    print("\n最初の5行:")
+    print(solar_data_annual_full.head())
+    print("\n統計情報:")
+    print(solar_data_annual_full.describe())
+
+def SolarTimeSeriesDataSet(network,solar_data_file):
+    # 太陽光発電データを読み込んで割り当て
     
-    print(f"\nSummary: Successfully loaded data for {success_count}/{len(solar_generators)} solar generators")
+    if os.path.exists(solar_data_file):
+        print(f"太陽光データを読み込んでいます: {solar_data_file}")
+        solar_data = pd.read_csv(solar_data_file, index_col=0, parse_dates=True)
+        
+        # 太陽光発電機を抽出（carrierが'solar'または'太陽光'のもの）
+        solar_gens = network.generators[network.generators.carrier.str.contains('solar|太陽光', case=False, na=False)]
+        
+        print(f"太陽光発電機の数: {len(solar_gens)}")
+        print(f"太陽光発電機: {solar_gens.index.tolist()}")
+        
+        # 各太陽光発電機にバスのデータを割り当て
+        for gen_name in solar_gens.index:
+            bus_name = network.generators.loc[gen_name, 'bus']
+            if bus_name in solar_data.columns:
+                # snapshotの範囲に合わせてリインデックス
+                gen_data = solar_data[bus_name].reindex(network.snapshots, method='nearest')
+                network.generators_t.p_max_pu[gen_name] = gen_data
+                print(f"  ✓ {gen_name} に {bus_name} のデータを割り当てました")
+            else:
+                print(f"  ⚠ {gen_name} のバス {bus_name} がCSVに見つかりません")
+                network.generators_t.p_max_pu[gen_name] = 0.0
+    else:
+        print(f"警告: {solar_data_file} が見つかりません。APIからデータを取得します。")
+        # 従来の方法（APIから取得）
+        pypsa_tepsco.import_solar_data_from_renewable_ninja(network, renewable_ninja_api_key, Year_of_analysis, Year_of_analysis)
