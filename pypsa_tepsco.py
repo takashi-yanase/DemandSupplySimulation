@@ -32,30 +32,31 @@ def plot_total_generation_by_carrier(network):
     carrier_output = {}
     for gen, carrier in gen_to_carrier.items():
         if carrier not in carrier_output:
-            carrier_output[carrier] = network.generators_t.p[gen]
+            carrier_output[carrier] = network.generators_t.p[gen].copy()  # .copy()を追加
         else:
-            carrier_output[carrier] += network.generators_t.p[gen]
+            carrier_output[carrier] = carrier_output[carrier] + network.generators_t.p[gen]  # += ではなく = を使用
 
     # DataFrame化（index=時系列、columns=carrier）
     carrier_output_df = pd.DataFrame(carrier_output)
 
     # グラフ描画
     # キャリアの順序および色を指定（下から上に積み上がる順）
-    desired_order = ["原子力", "火力（石炭）", "火力（ガス）", "火力（石油）", "水力", "太陽光", "バイオマス", "その他"]
-    color_list = ["#4B0082", "#2F4F4F", "#FF8C00", "#FF0000", "#87CEEB", "#EEFF00", "#228B22", "#D2691E"]
+    desired_order = ["原子力", "水力", "火力（石炭）", "火力（ガス）", "火力（石油）", "太陽光", "バイオマス", "その他"]
+    color_list = ["#4B0082","#87CEEB", "#2F4F4F", "#FF8C00", "#FF0000", "#EEFF00", "#228B22", "#D2691E"]
+    
     # 指定順で列を並び替える（存在する列だけ抽出）
     ordered_columns = [col for col in desired_order if col in carrier_output_df.columns]
     carrier_output_df = carrier_output_df[ordered_columns]
-
+    
+    # 存在する列に対応する色のみ抽出
+    colors_to_use = [color_list[desired_order.index(col)] for col in ordered_columns]
+    
+    fig, ax = plt.subplots(figsize=(14, 6))
     # グラフ描画
-    carrier_output_df.plot(
-        kind="area", 
-        stacked=True, 
-        figsize=(12,6),
-        alpha=0.8,
-        color=color_list[:len(ordered_columns)],
-        linewidth=0.5
-    )
+    total_load = network.loads_t['p_set'].sum(axis=1) 
+    total_load.plot(ax=ax, linewidth=1, color="#D05555DF", label='Total Load (負荷)', linestyle='-', zorder=100)
+    carrier_output_df.plot.area(ax=ax, alpha=0.6, linewidth=0, stacked=True, zorder=1, color=colors_to_use)
+   
     plt.title("キャリア別合計発電出力（積み上げ）")
     plt.xlabel("時間")
     plt.ylabel("発電出力 [MW]")
