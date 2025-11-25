@@ -12,7 +12,10 @@ https://occtonet3.occto.or.jp/public/dfw/RP11/OCCTO/SD/LOGIN_login#<br>
 
 
 <h2>将来の仕事</h2>
+<<<<<<< HEAD
 ・太陽光および風力の時系列データをatliteから読み込む。
+=======
+>>>>>>> 4a7f38894bc8a6719ece1a98dc900b96fc427172
 ・流れ込み式水力の時系列データの読み込み<br>
 ・揚水発電の効率の定義<br>
 ・変電所単位のノード細分化<br>
@@ -22,6 +25,8 @@ https://occtonet3.occto.or.jp/public/dfw/RP11/OCCTO/SD/LOGIN_login#<br>
 【11/21完了】揚水発電所、貯水池の組み込み⇒11/21完了<br>
 【11/21完了】太陽光のデータの読み込み方法の修正⇒11/21完了<br>
 【11/23】一般水力のデータに揚水発電所のデータが入っていたため削除<br>
+11/25　原子力発電所の稼働状態を反映
+
 
 
 
