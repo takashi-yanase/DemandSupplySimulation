@@ -62,11 +62,11 @@ def plot_total_generation_by_carrier(network):
     total_load.plot(ax=ax, linewidth=1, color="#D05555DF", label='Total Load (負荷)', linestyle='-', zorder=100)
     
     # 発電（正の値）を積み上げ
-    carrier_output_df.plot.area(ax=ax, alpha=0.8, linewidth=0, stacked=True, zorder=1, color=colors_to_use)
+    carrier_output_df.plot.area(ax=ax, alpha=0.6, linewidth=0, stacked=True, zorder=1, color=colors_to_use)
 
     # 揚水充電（負の値）をマイナス方向に表示
     if phss_charge is not None:
-        phss_charge.plot.area(ax=ax, alpha=0.8, linewidth=0, zorder=10, color="#0649DB", label='揚水充電')
+        phss_charge.plot.area(ax=ax, alpha=0.6, linewidth=0, zorder=10, color="#0649DB", label='揚水充電')
         
         # Y軸の範囲を調整（充電の最小値を含める）
         y_max = max(total_load.max(), carrier_output_df.sum(axis=1).max())

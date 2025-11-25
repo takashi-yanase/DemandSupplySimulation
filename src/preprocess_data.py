@@ -18,12 +18,10 @@ def import_demand_data_from_network_file(network, network_file_name, demand_chan
             print(f"Warning: Load '{load}' not found in demand data.")
 
 # 太陽光発電の時系列データをRenewable.Ninja APIから取得してCSVに保存
-def GetSolarTimeSeriesData(file_name, output_file, Year_of_analysis):
+def GetSolarTimeSeriesData(file_name, output_file, Year_of_analysis, renewable_ninja_api_key):
     # pypsa-japan-10BusModel.xlsx のbusesのバス名と座標を取得して、年間の時系列データを取得してCSVに保存
-
     import pandas as pd
     import requests
-    renewable_ninja_api_key = '0ee68c7853037dcd2235f771d349d104e68996cf'
 
     # ネットワークファイルからバス情報を読み込み
     buses_df = pd.read_excel(file_name, sheet_name='buses')
@@ -146,6 +144,4 @@ def SolarTimeSeriesDataSet(network,solar_data_file):
                 print(f"  ⚠ {gen_name} のバス {bus_name} がCSVに見つかりません")
                 network.generators_t.p_max_pu[gen_name] = 0.0
     else:
-        print(f"警告: {solar_data_file} が見つかりません。APIからデータを取得します。")
-        # 従来の方法（APIから取得）
-        pypsa_tepsco.import_solar_data_from_renewable_ninja(network, renewable_ninja_api_key, Year_of_analysis, Year_of_analysis)
+        print(f"  ✗ 太陽光データファイルが存在しません: {solar_data_file}")

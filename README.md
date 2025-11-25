@@ -12,7 +12,8 @@ https://occtonet3.occto.or.jp/public/dfw/RP11/OCCTO/SD/LOGIN_login#<br>
 
 
 <h2>将来の仕事</h2>
-・流れ込み式水力の時系列データの読み込み
+・太陽光および風力の時系列データをatliteから読み込む。
+・流れ込み式水力の時系列データの読み込み<br>
 ・揚水発電の効率の定義<br>
 ・変電所単位のノード細分化<br>
 ・需要の各ノードへの割当<br>
