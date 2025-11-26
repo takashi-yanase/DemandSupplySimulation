@@ -23,6 +23,8 @@ https://occtonet3.occto.or.jp/public/dfw/RP11/OCCTO/SD/LOGIN_login#<br>
 11/25 原子力発電所の稼働状態を反映<br>
 11/25 揚水発電の効率を入力(Excel V5, 効率1⇒0.7）<br>
 
+<h2>参考資料</h2>
+https://www.enecho.meti.go.jp/statistics/electric_power/ep002/results.html
 
 
 
