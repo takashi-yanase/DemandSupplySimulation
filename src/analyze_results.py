@@ -109,7 +109,7 @@ def plot_generation_by_bus(network):
         if gen_by_carrier.sum() > 0:
             bus_generation_data[bus_name] = gen_by_carrier
     # 1つのグラフに全地域の横棒グラフを作成
-    fig, ax = plt.subplots(figsize=(12, len(bus_generation_data) * 0.8))
+    fig, ax = plt.subplots(figsize=(12, len(bus_generation_data) * 0.6))
 
     # Y軸の位置を設定
     y_positions = range(len(bus_generation_data))
