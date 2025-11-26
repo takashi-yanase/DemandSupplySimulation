@@ -144,7 +144,7 @@ def plot_generation_by_bus(network):
     ax.set_ylim(-0.5, len(bus_generation_data) - 0.5)
     ax.set_xlabel('発電量の割合 (%)', fontsize=12)
     ax.set_yticks(y_positions)
-    ax.set_yticklabels([f'{name}\n({bus_generation_data[name].sum():.0f} MWh)' for name in bus_names_list], fontsize=10)
+    ax.set_yticklabels([f'{name}\n({bus_generation_data[name].sum()/1e6:.0f} TWh)' for name in bus_names_list], fontsize=10)
     ax.set_title('地域別発電種別構成 (Generation Mix by Region)', fontsize=14, fontweight='bold', pad=15)
     ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=10)
     ax.grid(axis='x', alpha=0.3)
