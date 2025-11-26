@@ -12,10 +12,6 @@ https://occtonet3.occto.or.jp/public/dfw/RP11/OCCTO/SD/LOGIN_login#<br>
 
 
 <h2>将来の仕事</h2>
-<<<<<<< HEAD
-・太陽光および風力の時系列データをatliteから読み込む。
-=======
->>>>>>> 4a7f38894bc8a6719ece1a98dc900b96fc427172
 ・流れ込み式水力の時系列データの読み込み<br>
 ・変電所単位のノード細分化<br>
 ・需要の各ノードへの割当<br>
