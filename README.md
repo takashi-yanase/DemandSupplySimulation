@@ -13,6 +13,7 @@ https://occtonet3.occto.or.jp/public/dfw/RP11/OCCTO/SD/LOGIN_login#<br>
 
 <h2>将来の仕事</h2>
 ・投資最適化計算<br>
+    ・investment_period_weightingsを追加する。<br>
 ・流れ込み式水力の時系列データの読み込み<br>
 ・2024年の実績データとの比較（検証）
 ・変電所単位のノード細分化<br>
