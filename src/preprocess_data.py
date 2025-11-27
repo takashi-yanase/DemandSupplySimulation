@@ -9,11 +9,32 @@ import matplotlib.pyplot as plt
 # 需要データの読み込み
 def import_demand_data_from_network_file(network, network_file_name, demand_change_compared_to_2024):
     demand_data_raw = pd.read_excel(network_file_name, sheet_name='Demand', index_col=0, parse_dates=True)
-
+    
+    # インデックスをdatetimeに変換
+    demand_data_raw.index = pd.to_datetime(demand_data_raw.index)
+    
+    # 2月29日を除外（閏年対応）
+    demand_data_raw = demand_data_raw[~((demand_data_raw.index.month == 2) & (demand_data_raw.index.day == 29))]
+    
+    # ネットワークのスナップショットの年を取得
+    target_year = network.snapshots[0].year
+    base_year = demand_data_raw.index[0].year
+    
     # demand_data_rawに格納されたデータをnetwork.loads_t.p_setに適用
     for load in network.loads.index:
         if load in demand_data_raw.columns:
-            network.loads_t.p_set[load] = demand_data_raw[load] * (1 + demand_change_compared_to_2024 / 100)
+            # 2024年のデータを対象年のスナップショットに合わせて調整
+            if target_year != base_year:
+                # 月日時刻を保持したまま年だけを変更
+                adjusted_index = demand_data_raw.index.map(lambda x: x.replace(year=target_year))
+                demand_series = pd.Series(demand_data_raw[load].values, index=adjusted_index)
+                # ネットワークのスナップショットに合わせてリインデックス
+                demand_series = demand_series.reindex(network.snapshots, method='nearest')
+            else:
+                demand_series = demand_data_raw[load].reindex(network.snapshots, method='nearest')
+            
+            # 需要変化率を適用
+            network.loads_t.p_set[load] = demand_series * (1 + demand_change_compared_to_2024 / 100)
         else:
             print(f"Warning: Load '{load}' not found in demand data.")
 
@@ -26,6 +47,11 @@ def GetSolarTimeSeriesData(file_name, output_file, Year_of_analysis, renewable_n
     # ネットワークファイルからバス情報を読み込み
     buses_df = pd.read_excel(file_name, sheet_name='buses')
     buses_df = buses_df.set_index('name')
+    
+    # carrier='AC'のバスのみに絞る
+    if 'carrier' in buses_df.columns:
+        buses_df = buses_df[buses_df['carrier'] == 'AC']
+        print(f"carrier='AC'のバスに絞り込みました: {len(buses_df)}個")
 
     # 座標情報を含むバス位置データフレームを作成
     bus_coords = buses_df[['y', 'x']].copy()
@@ -130,6 +156,16 @@ def SolarTimeSeriesDataSet(network,solar_data_file):
         print(f"太陽光データを読み込んでいます: {solar_data_file}")
         solar_data = pd.read_csv(solar_data_file, index_col=0, parse_dates=True)
         
+        # インデックスをdatetimeに変換
+        solar_data.index = pd.to_datetime(solar_data.index)
+        
+        # 2月29日を除外（閏年対応）
+        solar_data = solar_data[~((solar_data.index.month == 2) & (solar_data.index.day == 29))]
+        
+        # ネットワークのスナップショットの年を取得
+        target_year = network.snapshots[0].year
+        base_year = solar_data.index[0].year
+        
         # 太陽光発電機を抽出（carrierが'solar'または'太陽光'のもの）
         solar_gens = network.generators[network.generators.carrier.str.contains('solar|太陽光', case=False, na=False)]
         
@@ -137,8 +173,17 @@ def SolarTimeSeriesDataSet(network,solar_data_file):
         for gen_name in solar_gens.index:
             bus_name = network.generators.loc[gen_name, 'bus']
             if bus_name in solar_data.columns:
-                # snapshotの範囲に合わせてリインデックス
-                gen_data = solar_data[bus_name].reindex(network.snapshots, method='nearest')
+                # 2024年のデータを対象年のスナップショットに合わせて調整
+                if target_year != base_year:
+                    # 月日時刻を保持したまま年だけを変更
+                    adjusted_index = solar_data.index.map(lambda x: x.replace(year=target_year))
+                    gen_series = pd.Series(solar_data[bus_name].values, index=adjusted_index)
+                    # snapshotの範囲に合わせてリインデックス
+                    gen_data = gen_series.reindex(network.snapshots, method='nearest')
+                else:
+                    # snapshotの範囲に合わせてリインデックス
+                    gen_data = solar_data[bus_name].reindex(network.snapshots, method='nearest')
+                
                 network.generators_t.p_max_pu[gen_name] = gen_data
             else:
                 print(f"  ⚠ {gen_name} のバス {bus_name} がCSVに見つかりません")
