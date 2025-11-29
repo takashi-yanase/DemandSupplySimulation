@@ -1,5 +1,7 @@
 <h1>日本のPyPSAモデル</h1><br>
 <br>
+
+<img src="https://github.com/takashi-yanase/DemandSupplySimulation/blob/main/images/output.png"><BR>
 <h2>需要データ</h2>　2024年のデータ　電力広域的運営推進機関（OCCTO）の公開データを取得<br>
 https://occtonet3.occto.or.jp/public/dfw/RP11/OCCTO/SD/LOGIN_login#<br>
 ↑ここのリンクからダウンロード情報⇒CSVダウンロード⇒情報ダウンロード<br>
