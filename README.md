@@ -14,8 +14,7 @@ https://occtonet3.occto.or.jp/public/dfw/RP11/OCCTO/SD/LOGIN_login#<br>
 <h2>将来の仕事</h2>
 ・投資最適化計算<br>
     ・investment_period_weightingsを追加する。<br>
-・流れ込み式水力の時系列データの読み込み<br>
-・2024年の実績データとの比較（検証）
+・2024年の実績データとの比較（検証）<br>
 ・変電所単位のノード細分化<br>
 ・需要の各ノードへの割当<br>
 
@@ -25,6 +24,8 @@ https://occtonet3.occto.or.jp/public/dfw/RP11/OCCTO/SD/LOGIN_login#<br>
 11/23 一般水力のデータに揚水発電所のデータが入っていたため削除<br>
 11/25 原子力発電所の稼働状態を反映<br>
 11/25 揚水発電の効率を入力(Excel V5, 効率1⇒0.7）<br>
+11/30 揚水発電の効率が正確に反映されていないコードのバグを修正<br>
+11/30 一般水力への時系列データの反映（ただし、参考値、公式データは見つかっていない）
 
 <h2>参考資料</h2>
 https://www.enecho.meti.go.jp/statistics/electric_power/ep002/results.html

@@ -190,3 +190,65 @@ def SolarTimeSeriesDataSet(network,solar_data_file):
                 network.generators_t.p_max_pu[gen_name] = 0.0
     else:
         print(f"  ✗ 太陽光データファイルが存在しません: {solar_data_file}")
+
+
+def HydroTimeSeriesDataSet(network, hydro_data_file):
+    """
+    水力発電の時系列データを読み込んで、ネットワークの発電機に割り当てる
+    
+    Args:
+        network: PyPSA Network object
+        hydro_data_file: 水力時系列データのCSVファイルパス
+    """
+    if os.path.exists(hydro_data_file):
+        print(f"水力データを読み込んでいます: {hydro_data_file}")
+        hydro_data = pd.read_csv(hydro_data_file, index_col=0, parse_dates=True)
+        
+        # インデックスをdatetimeに変換
+        hydro_data.index = pd.to_datetime(hydro_data.index)
+        
+        # 2月29日を除外（閏年対応）
+        hydro_data = hydro_data[~((hydro_data.index.month == 2) & (hydro_data.index.day == 29))]
+        
+        # ネットワークのスナップショットの年を取得
+        target_year = network.snapshots[0].year
+        base_year = hydro_data.index[0].year
+        
+        # 水力発電機を抽出（carrierが'hydro'または'水力'のもの）
+        hydro_gens = network.generators[network.generators.carrier.str.contains('hydro|水力', case=False, na=False)]
+        
+        if len(hydro_gens) == 0:
+            print("  ⚠ 水力発電機が見つかりません")
+            return
+        
+        print(f"  水力発電機: {len(hydro_gens)}台")
+        
+        # 水力稼働率カラムを取得（'水力稼働率'など）
+        rate_column = None
+        for col in hydro_data.columns:
+            if '水力' in col or 'hydro' in col.lower():
+                rate_column = col
+                break
+        
+        if rate_column is None:
+            print(f"  ✗ 水力稼働率カラムが見つかりません。利用可能なカラム: {hydro_data.columns.tolist()}")
+            return
+        
+        # 各水力発電機に稼働率データを割り当て
+        for gen_name in hydro_gens.index:
+            # 年の調整
+            if target_year != base_year:
+                # 月日時刻を保持したまま年だけを変更
+                adjusted_index = hydro_data.index.map(lambda x: x.replace(year=target_year))
+                gen_series = pd.Series(hydro_data[rate_column].values, index=adjusted_index)
+                # snapshotの範囲に合わせてリインデックス
+                gen_data = gen_series.reindex(network.snapshots, method='nearest')
+            else:
+                # snapshotの範囲に合わせてリインデックス
+                gen_data = hydro_data[rate_column].reindex(network.snapshots, method='nearest')
+            
+            network.generators_t.p_max_pu[gen_name] = gen_data
+            
+        print(f"  ✓ {len(hydro_gens)}台の水力発電機に稼働率を設定しました")
+    else:
+        print(f"  ✗ 水力データファイルが存在しません: {hydro_data_file}")
