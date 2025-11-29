@@ -5,11 +5,36 @@ import warnings, requests, re, shutil
 import matplotlib.pyplot as plt
 
 # 発電量プロット
-def plot_total_generation_by_carrier(network):
-
+def plot_total_generation_by_carrier(network, start_date=None, end_date=None):
+    """
+    キャリア別の合計発電出力をプロット
+    
+    Args:
+        network: PyPSA Network object
+        start_date: 開始日時 (例: '2024-04-01' または '2024-04-01 00:00')
+        end_date: 終了日時 (例: '2024-04-14' または '2024-04-14 23:00')
+    """
     pd.options.plotting.backend = "matplotlib"  # プロットバックエンドをmatplotlibに
     plt.rcParams['font.family'] = 'Meiryo'  # または 'Meiryo', 'Yu Gothic' MS Gothic
     plt.rcParams['axes.unicode_minus'] = False  # マイナス符号も文字化け防止
+    
+    # 期間指定がある場合はデータをフィルタリング
+    if start_date is not None or end_date is not None:
+        mask = pd.Series(True, index=network.snapshots)
+        if start_date is not None:
+            mask = mask & (network.snapshots >= pd.Timestamp(start_date))
+        if end_date is not None:
+            mask = mask & (network.snapshots <= pd.Timestamp(end_date))
+        snapshots = network.snapshots[mask]
+        
+        if len(snapshots) == 0:
+            print(f"指定期間にデータがありません: {start_date} ~ {end_date}")
+            return
+        
+        print(f"表示期間: {snapshots[0]} ~ {snapshots[-1]} ({len(snapshots)}時間)")
+    else:
+        snapshots = network.snapshots
+    
     # 各generatorがどのcarrierかを取得
     carrier_map = network.generators['carrier']
 
@@ -19,10 +44,11 @@ def plot_total_generation_by_carrier(network):
     # generators_t.pの列（generator名）ごとにcarrierでgroupbyして合計
     carrier_output = {}
     for gen, carrier in gen_to_carrier.items():
+        gen_data = network.generators_t.p[gen].loc[snapshots]
         if carrier not in carrier_output:
-            carrier_output[carrier] = network.generators_t.p[gen].copy()  # .copy()を追加
+            carrier_output[carrier] = gen_data.copy()
         else:
-            carrier_output[carrier] = carrier_output[carrier] + network.generators_t.p[gen]  # += ではなく = を使用
+            carrier_output[carrier] = carrier_output[carrier] + gen_data
 
     # 揚水発電の出力を追加（linksから取得）
     phss_discharge = None
@@ -32,13 +58,13 @@ def plot_total_generation_by_carrier(network):
             # carrier='揚水（放電）'のリンクを抽出
             phss_discharge_links = network.links[network.links['carrier'] == '揚水（放電）'].index
             if len(phss_discharge_links) > 0 and hasattr(network.links_t, 'p0'):
-                phss_discharge = network.links_t.p0[phss_discharge_links].sum(axis=1)
+                phss_discharge = network.links_t.p0[phss_discharge_links].loc[snapshots].sum(axis=1)
                 carrier_output['揚水（放電）'] = phss_discharge.copy()
             
             # carrier='揚水（充電）'のリンクを抽出
             phss_charge_links = network.links[network.links['carrier'] == '揚水（充電）'].index
             if len(phss_charge_links) > 0 and hasattr(network.links_t, 'p0'):
-                phss_charge = network.links_t.p0[phss_charge_links].sum(axis=1)
+                phss_charge = network.links_t.p0[phss_charge_links].loc[snapshots].sum(axis=1)
                 # 充電は負の値として扱う（系統からの流出なので負にする）
                 phss_charge = -phss_charge
 
@@ -60,7 +86,7 @@ def plot_total_generation_by_carrier(network):
     fig, ax = plt.subplots(figsize=(14, 6))
     
     # Y軸の範囲を先に計算
-    y_max = network.loads_t['p_set'].sum(axis=1).max()
+    y_max = network.loads_t['p_set'].loc[snapshots].sum(axis=1).max()
     y_min = 0
     if phss_charge is not None and phss_charge.sum() != 0:
         y_min = phss_charge.min()
@@ -74,7 +100,7 @@ def plot_total_generation_by_carrier(network):
                         alpha=0.6, color="#06A9DB", label='揚水（充電）', zorder=2, interpolate=True)
     
     # 負荷線を最後に描画
-    total_load = network.loads_t['p_set'].sum(axis=1) 
+    total_load = network.loads_t['p_set'].loc[snapshots].sum(axis=1) 
     total_load.plot(ax=ax, linewidth=2, color="#D05555DF", label='Total Load (負荷)', linestyle='-', zorder=100)
         
     # Y軸の範囲を設定
@@ -154,14 +180,14 @@ def plot_generation_by_bus(network):
                 
                 # 横棒を描画（最初のバスの時だけlabelを付ける）
                 if idx == 0:
-                    ax.barh(y_pos, percentage, left=left, color=color, label=carrier, height=0.6)
+                    ax.barh(y_pos, percentage, left=left, color=color, label=carrier, height=0.6, alpha=0.8)
                 else:
-                    ax.barh(y_pos, percentage, left=left, color=color, height=0.6)
+                    ax.barh(y_pos, percentage, left=left, color=color, height=0.6, alpha=0.8)
                 
                 # パーセント表示（5%以上の場合のみ）
                 if percentage >= 5:
                     ax.text(left + percentage/2, y_pos, f'{percentage:.1f}%', 
-                        ha='center', va='center', fontsize=9, fontweight='bold', color='white')
+                        ha='center', va='center', fontsize=9, fontweight='bold', color='black')
                 left += percentage
 
     # グラフの設定
