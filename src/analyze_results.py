@@ -99,9 +99,9 @@ def plot_total_generation_by_carrier(network, start_date=None, end_date=None):
         ax.fill_between(phss_charge.index, phss_charge, 0, 
                         alpha=0.6, color="#06A9DB", label='揚水（充電）', zorder=2, interpolate=True)
     
-    # 負荷線を最後に描画
+    # 負荷線を最後に描画（赤色、細線）
     total_load = network.loads_t['p_set'].loc[snapshots].sum(axis=1) 
-    total_load.plot(ax=ax, linewidth=2, color="#D05555DF", label='Total Load (負荷)', linestyle='-', zorder=100)
+    total_load.plot(ax=ax, linewidth=1.2, color='red', label='Total Load (負荷)', linestyle='-', zorder=100)
         
     # Y軸の範囲を設定
     if carrier_output_df.sum(axis=1).max() > y_max:
