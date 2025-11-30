@@ -160,7 +160,7 @@ def plot_generation_by_bus(network):
         if gen_by_carrier.sum() > 0:
             bus_generation_data[bus_name] = gen_by_carrier
     # 1つのグラフに全地域の横棒グラフを作成
-    fig, ax = plt.subplots(figsize=(12, len(bus_generation_data) * 0.6))
+    fig, ax = plt.subplots(figsize=(6, len(bus_generation_data) * 0.6))
 
     # Y軸の位置を設定
     y_positions = range(len(bus_generation_data))
@@ -197,7 +197,9 @@ def plot_generation_by_bus(network):
     ax.set_yticks(y_positions)
     ax.set_yticklabels([f'{name}\n({bus_generation_data[name].sum()/1e6:.0f} TWh)' for name in bus_names_list], fontsize=10)
     ax.set_title('地域別発電種別構成 (Generation Mix by Region)', fontsize=14, fontweight='bold', pad=15)
-    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize=10)
+        # 凡例を下部中央に配置
+    handles, labels = ax.get_legend_handles_labels()
+    ax.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, -0.25), ncol=3, fontsize=10, title_fontsize=12, frameon=False)
     ax.grid(axis='x', alpha=0.3)
     ax.invert_yaxis()  # 上から下に並べる
 
@@ -244,7 +246,7 @@ def plot_generation_mix_in_total_in_pie_graph(network):
         autopct='%1.1f%%',
         startangle=90, 
         colors=colors_to_use,
-        textprops={'fontsize': 8})
-    ax.set_title('発電種別ごとの総発電量 (Total Generation by Carrier Type)', fontsize=12)
+        textprops={'fontsize': 10})
+    ax.set_title('発電種別ごとの総発電量 (Total Generation by Carrier Type)', fontsize=10)
     plt.tight_layout()
     plt.show()
